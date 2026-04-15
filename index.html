@@ -72,9 +72,9 @@
       }
       .hotspot-combined {
         left: 10%;
-        top: 49%;
+        top: 49.2%;
         width: 87%;
-        height: 8%;
+        height: 8.8%;
         opacity: 0;
         pointer-events: none;
       }
@@ -164,7 +164,7 @@
     <main>
       <div class="stage">
         <div class="poster" id="poster">
-          <video id="bg-video" src="./video.mp4" loop playsinline preload="metadata"></video>
+          <video id="bg-video" src="./video.mp4" loop playsinline preload="auto" muted></video>
 
           <button
             id="video-control"
@@ -211,6 +211,17 @@
           button.setAttribute('aria-label', label);
         };
 
+        const tryShowFirstFrame = () => {
+          if (hasStarted) return;
+          if (!Number.isFinite(video.duration)) return;
+          if (video.readyState < 2) return;
+          try {
+            if (video.currentTime === 0) {
+              video.currentTime = 0.001;
+            }
+          } catch {}
+        };
+
         const syncUi = () => {
           const shouldShowHotspot =
             Number.isFinite(video.currentTime) && video.currentTime >= HOTSPOT_TIME_SECONDS;
@@ -250,6 +261,7 @@
         videoBtn.addEventListener('click', async () => {
           if (video.paused) {
             try {
+              video.muted = false;
               await video.play();
             } catch {
               return;
@@ -263,6 +275,7 @@
         playToggle.addEventListener('click', async () => {
           if (video.paused) {
             try {
+              video.muted = false;
               await video.play();
             } catch {
               return;
@@ -278,6 +291,8 @@
           syncUi();
         });
 
+        video.addEventListener('loadedmetadata', tryShowFirstFrame);
+        video.addEventListener('loadeddata', tryShowFirstFrame);
         video.addEventListener('timeupdate', syncUi);
         video.addEventListener('seeked', syncUi);
         video.addEventListener('pause', syncUi);
