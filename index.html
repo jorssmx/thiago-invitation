@@ -27,12 +27,13 @@
         box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
         background: #000;
       }
-      .poster img {
+      .poster video {
         display: block;
         width: 762px;
         height: auto;
         max-width: calc(100vw - 16px);
         max-height: calc(100svh - 16px);
+        object-fit: cover;
       }
       @keyframes pulse {
         0% {
@@ -64,53 +65,58 @@
         outline-offset: 4px;
       }
       .hotspot-combined {
-        left: 1%;
-        top: 52.5%;
-        width: 98%;
-        height: 14%;
+        left: 10%;
+        top: 49%;
+        width: 87%;
+        height: 8%;
+        opacity: 0;
+        pointer-events: none;
       }
-      .audio-btn {
+      .hotspot-combined.is-visible {
+        opacity: 1;
+        pointer-events: auto;
+      }
+      .video-btn {
         position: absolute;
-        top: 16px;
-        right: 16px;
-        background: rgba(0, 0, 0, 0.6);
+        top: 50%;
+        left: 0;
+        right: 0;
+        transform: translateY(-50%);
+        background: transparent;
         color: white;
-        border: 2px solid rgba(255, 255, 255, 0.3);
-        border-radius: 20px;
-        padding: 8px 16px;
-        font-size: 14px;
-        font-weight: bold;
+        border: 0;
+        padding: 0;
         cursor: pointer;
-        backdrop-filter: blur(4px);
         transition: all 0.3s ease;
         z-index: 10;
         font-family: inherit;
         display: flex;
+        justify-content: center;
         align-items: center;
         gap: 6px;
       }
-      .audio-btn:hover {
-        background: rgba(0, 0, 0, 0.8);
-        border-color: rgba(255, 255, 255, 0.6);
-        transform: scale(1.05);
+      .video-btn img {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+      .video-btn:hover {
+        transform: translateY(-50%) scale(1.02);
+      }
+      .video-btn.is-hidden {
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(-50%) scale(0.98);
       }
     </style>
   </head>
   <body>
     <main>
       <div class="poster">
-        <img src="./plantilla.png" alt="Invitación" />
-        
-        <!-- Elemento de audio -->
-        <audio id="bg-audio" loop>
-          <source src="audio.mp4" type="audio/mp4">
-          <source src="audio.mp3" type="audio/mpeg"> <!-- Por si acaso tienes el mp3 -->
-          Tu navegador no soporta el elemento de audio.
-        </audio>
+        <video id="bg-video" src="./video.mp4" loop playsinline preload="metadata"></video>
 
-        <!-- Botón de control -->
-        <button id="audio-control" class="audio-btn" aria-label="Reproducir música">
-          <span>🔊</span> Reproducir
+        <button id="video-control" class="video-btn" type="button" aria-label="Reproducir video">
+          <img src="./botón.jpeg" alt="Reproducir" />
         </button>
 
         <a
@@ -123,18 +129,48 @@
       </div>
 
       <script>
-        const audio = document.getElementById('bg-audio');
-        const audioBtn = document.getElementById('audio-control');
+        const video = document.getElementById('bg-video');
+        const videoBtn = document.getElementById('video-control');
+        const hotspot = document.querySelector('.hotspot-combined');
 
-        audioBtn.addEventListener('click', () => {
-          if (audio.paused) {
-            audio.play();
-            audioBtn.innerHTML = '<span>⏸</span> Pausar';
+        const HOTSPOT_TIME_SECONDS = 6;
+
+        const syncUi = () => {
+          const shouldShowHotspot =
+            Number.isFinite(video.currentTime) && video.currentTime >= HOTSPOT_TIME_SECONDS;
+
+          if (shouldShowHotspot) {
+            hotspot.classList.add('is-visible');
           } else {
-            audio.pause();
-            audioBtn.innerHTML = '<span>🔊</span> Reproducir';
+            hotspot.classList.remove('is-visible');
           }
+
+          if (video.paused) {
+            videoBtn.classList.remove('is-hidden');
+            videoBtn.setAttribute('aria-label', 'Reproducir video');
+          } else {
+            videoBtn.classList.add('is-hidden');
+          }
+        };
+
+        videoBtn.addEventListener('click', async () => {
+          if (video.paused) {
+            try {
+              await video.play();
+            } catch {
+              return;
+            }
+          } else {
+            video.pause();
+          }
+          syncUi();
         });
+
+        video.addEventListener('timeupdate', syncUi);
+        video.addEventListener('seeked', syncUi);
+        video.addEventListener('pause', syncUi);
+        video.addEventListener('play', syncUi);
+        syncUi();
       </script>
     </main>
   </body>
