@@ -19,9 +19,16 @@
         font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
         overflow: hidden;
       }
+      .stage {
+        width: min(762px, calc(100vw - 16px));
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+      }
       .poster {
         position: relative;
-        display: inline-block;
+        width: 100%;
         border-radius: 16px;
         overflow: hidden;
         box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
@@ -29,10 +36,9 @@
       }
       .poster video {
         display: block;
-        width: 762px;
+        width: 100%;
         height: auto;
-        max-width: calc(100vw - 16px);
-        max-height: calc(100svh - 16px);
+        max-height: calc(100svh - 16px - 64px);
         object-fit: cover;
       }
       @keyframes pulse {
@@ -108,32 +114,102 @@
         pointer-events: none;
         transform: translateY(-50%) scale(0.98);
       }
+      .poster.is-started .video-btn {
+        opacity: 0;
+        pointer-events: none;
+      }
+      .controls {
+        width: 100%;
+        padding: 10px 6px;
+        background: rgba(0, 0, 0, 0.55);
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        z-index: 10;
+        opacity: 0;
+        pointer-events: none;
+        border-radius: 16px;
+      }
+      .controls.is-visible {
+        opacity: 1;
+        pointer-events: auto;
+      }
+      .controls button {
+        appearance: none;
+        border: 2px solid rgba(255, 255, 255, 0.25);
+        background: rgba(0, 0, 0, 0.55);
+        color: rgba(255, 255, 255, 0.95);
+        border-radius: 18px;
+        flex: 1;
+        height: 96px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-family: inherit;
+      }
+      .controls button img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        display: block;
+      }
+      .controls button:active {
+        transform: scale(0.98);
+      }
     </style>
   </head>
   <body>
     <main>
-      <div class="poster">
-        <video id="bg-video" src="./video.mp4" loop playsinline preload="metadata"></video>
+      <div class="stage">
+        <div class="poster" id="poster">
+          <video id="bg-video" src="./video.mp4" loop playsinline preload="metadata"></video>
 
-        <button id="video-control" class="video-btn" type="button" aria-label="Reproducir video">
-          <img src="./botón.jpeg" alt="Reproducir" />
-        </button>
+          <button
+            id="video-control"
+            class="video-btn"
+            type="button"
+            aria-label="Reproducir video"
+          >
+            <img src="./botón.jpeg" alt="Reproducir" />
+          </button>
 
-        <a
-          class="hotspot hotspot-combined"
-          href="https://www.google.com/maps/place/Salon+de+Fiestas+Toys/@19.4750297,-99.1217475,17z/data=!3m1!4b1!4m6!3m5!1s0x85d1f973624aaf1d:0xd6a72fcd7795f2b3!8m2!3d19.4750297!4d-99.1217475!16s%2Fg%2F11b6v4lm9k!18m1!1e1?entry=ttu&g_ep=EgoyMDI2MDQwOC4wIKXMDSoASAFQAw%3D%3D"
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="Abrir ubicación en Google Maps"
-        ></a>
+          <a
+            class="hotspot hotspot-combined"
+            href="https://www.google.com/maps/place/Salon+de+Fiestas+Toys/@19.4750297,-99.1217475,17z/data=!3m1!4b1!4m6!3m5!1s0x85d1f973624aaf1d:0xd6a72fcd7795f2b3!8m2!3d19.4750297!4d-99.1217475!16s%2Fg%2F11b6v4lm9k!18m1!1e1?entry=ttu&g_ep=EgoyMDI2MDQwOC4wIKXMDSoASAFQAw%3D%3D"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Abrir ubicación en Google Maps"
+          ></a>
+        </div>
+
+        <div id="controls" class="controls" aria-label="Controles">
+          <button id="mute-toggle" type="button" aria-label="Mutear">
+            <img src="./silenciar.png" alt="Mutear" />
+          </button>
+          <button id="play-toggle" type="button" aria-label="Pausar">
+            <img src="./pausar.png" alt="Pausar" />
+          </button>
+        </div>
       </div>
 
       <script>
         const video = document.getElementById('bg-video');
+        const poster = document.getElementById('poster');
         const videoBtn = document.getElementById('video-control');
         const hotspot = document.querySelector('.hotspot-combined');
+        const controls = document.getElementById('controls');
+        const muteToggle = document.getElementById('mute-toggle');
+        const playToggle = document.getElementById('play-toggle');
 
         const HOTSPOT_TIME_SECONDS = 6;
+        let hasStarted = false;
+
+        const setControlIcon = (button, src, label) => {
+          button.innerHTML = `<img src="${src}" alt="${label}" />`;
+          button.setAttribute('aria-label', label);
+        };
 
         const syncUi = () => {
           const shouldShowHotspot =
@@ -145,11 +221,29 @@
             hotspot.classList.remove('is-visible');
           }
 
-          if (video.paused) {
-            videoBtn.classList.remove('is-hidden');
-            videoBtn.setAttribute('aria-label', 'Reproducir video');
+          if (!hasStarted) {
+            if (video.paused) {
+              videoBtn.classList.remove('is-hidden');
+              videoBtn.setAttribute('aria-label', 'Reproducir video');
+            } else {
+              videoBtn.classList.add('is-hidden');
+            }
+          }
+
+          if (hasStarted) {
+            controls.classList.add('is-visible');
+            setControlIcon(
+              muteToggle,
+              video.muted ? './escuchar.png' : './silenciar.png',
+              video.muted ? 'Desmutear' : 'Mutear',
+            );
+            setControlIcon(
+              playToggle,
+              video.paused ? './reproducir.png' : './pausar.png',
+              video.paused ? 'Reproducir' : 'Pausar',
+            );
           } else {
-            videoBtn.classList.add('is-hidden');
+            controls.classList.remove('is-visible');
           }
         };
 
@@ -166,10 +260,34 @@
           syncUi();
         });
 
+        playToggle.addEventListener('click', async () => {
+          if (video.paused) {
+            try {
+              await video.play();
+            } catch {
+              return;
+            }
+          } else {
+            video.pause();
+          }
+          syncUi();
+        });
+
+        muteToggle.addEventListener('click', () => {
+          video.muted = !video.muted;
+          syncUi();
+        });
+
         video.addEventListener('timeupdate', syncUi);
         video.addEventListener('seeked', syncUi);
         video.addEventListener('pause', syncUi);
-        video.addEventListener('play', syncUi);
+        video.addEventListener('play', () => {
+          if (!hasStarted) {
+            hasStarted = true;
+            poster.classList.add('is-started');
+          }
+          syncUi();
+        });
         syncUi();
       </script>
     </main>
